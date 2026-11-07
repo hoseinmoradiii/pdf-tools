@@ -1,0 +1,9 @@
+<div class="dropzone" data-dropzone data-multiple="<%= multiple ? 'true' : 'false' %>" data-images="<%= typeof showPreviews !== 'undefined' && showPreviews ? 'true' : 'false' %>">
+  <input type="file" id="<%= name %>" name="<%= name %>" accept="<%= accept %>" <%= multiple ? 'multiple' : '' %> required>
+  <label for="<%= name %>" class="dropzone-label">
+    <strong>Drop <%= multiple ? 'files' : 'a file' %> here</strong>
+    <span>or click to browse</span>
+    <small><%= hint %></small>
+  </label>
+</div>
+<ul class="file-list" data-file-list aria-live="polite"></ul>

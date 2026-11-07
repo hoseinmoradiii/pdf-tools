@@ -1,0 +1,14 @@
+<% if (typeof error !== 'undefined' && error) { %>
+  <div class="notice notice-error" role="alert">
+    <strong>That didn’t work.</strong> <%= error %>
+  </div>
+<% } %>
+<% if (typeof result !== 'undefined' && result) { %>
+  <div class="notice notice-ok" role="status">
+    <div>
+      <strong>Your file is ready.</strong>
+      <span><%= result.filename %></span>
+    </div>
+    <a class="btn" href="<%= result.url %>" download>Download</a>
+  </div>
+<% } %>

@@ -1,0 +1,43 @@
+<section class="tool-page">
+  <h1>Images to PDF</h1>
+  <p class="lede">Add your images, put them in the order you want, then convert. Each image becomes one page.</p>
+
+  <%- include('../partials/feedback') %>
+
+  <form action="/images-to-pdf" method="POST" enctype="multipart/form-data" data-upload-form>
+    <%- include('../partials/dropzone', {
+      name: 'images',
+      accept: 'image/png,image/jpeg,image/webp',
+      multiple: true,
+      showPreviews: true,
+      hint: 'JPG, PNG or WebP. Up to 20 images.'
+    }) %>
+
+    <fieldset class="options">
+      <legend>Page options</legend>
+      <label>Page size
+        <select name="pageSize">
+          <option value="A4" selected>A4</option>
+          <option value="Letter">Letter</option>
+          <option value="fit">Same size as the image</option>
+        </select>
+      </label>
+      <label>Orientation
+        <select name="orientation">
+          <option value="auto" selected>Match each image</option>
+          <option value="portrait">Portrait</option>
+          <option value="landscape">Landscape</option>
+        </select>
+      </label>
+      <label>Margin
+        <select name="margin">
+          <option value="0">None</option>
+          <option value="20" selected>Small</option>
+          <option value="40">Large</option>
+        </select>
+      </label>
+    </fieldset>
+
+    <button type="submit" class="btn btn-primary" data-submit disabled data-busy-text="Converting…">Convert to PDF</button>
+  </form>
+</section>

@@ -1,0 +1,17 @@
+<section class="tool-page">
+  <h1>PDF to Word</h1>
+  <p class="lede">Upload a PDF and download an editable Word document.</p>
+
+  <%- include('../partials/feedback') %>
+
+  <form action="/pdf-to-word" method="POST" enctype="multipart/form-data" data-upload-form>
+    <%- include('../partials/dropzone', {
+      name: 'pdf',
+      accept: 'application/pdf,.pdf',
+      multiple: false,
+      hint: 'PDF only. Up to 25 MB.'
+    }) %>
+
+    <button type="submit" class="btn btn-primary" data-submit disabled data-busy-text="Converting…">Convert to Word</button>
+  </form>
+</section>

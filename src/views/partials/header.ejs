@@ -1,0 +1,11 @@
+<% const current = typeof active !== 'undefined' ? active : ''; %>
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="brand" href="/">Paperwork</a>
+    <nav aria-label="Tools">
+      <a href="/images-to-pdf"    <%- current === 'images'    ? 'aria-current="page"' : '' %>>Images to PDF</a>
+      <a href="/remove-watermark" <%- current === 'watermark' ? 'aria-current="page"' : '' %>>Remove watermark</a>
+      <a href="/pdf-to-word"      <%- current === 'word'      ? 'aria-current="page"' : '' %>>PDF to Word</a>
+    </nav>
+  </div>
+</header>

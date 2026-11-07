@@ -1,0 +1,32 @@
+<section class="tool-page">
+  <h1>Remove watermark</h1>
+  <p class="lede">Upload a PDF and tell us what the watermark says. We’ll return a copy without it.</p>
+
+  <%- include('../partials/feedback') %>
+
+  <form action="/remove-watermark" method="POST" enctype="multipart/form-data" data-upload-form>
+    <%- include('../partials/dropzone', {
+      name: 'pdf',
+      accept: 'application/pdf,.pdf',
+      multiple: false,
+      hint: 'PDF only. Up to 25 MB.'
+    }) %>
+
+    <fieldset class="options">
+      <legend>Watermark</legend>
+      <label>Watermark text (optional)
+        <input type="text" name="watermarkText" placeholder="For example: CONFIDENTIAL">
+      </label>
+      <label>Pages
+        <select name="pages">
+          <option value="all" selected>All pages</option>
+          <option value="first">First page only</option>
+        </select>
+      </label>
+    </fieldset>
+
+    <p class="note">Only remove watermarks from documents you own or have permission to edit.</p>
+
+    <button type="submit" class="btn btn-primary" data-submit disabled data-busy-text="Removing…">Remove watermark</button>
+  </form>
+</section>
