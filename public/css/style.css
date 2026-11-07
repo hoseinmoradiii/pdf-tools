@@ -183,8 +183,8 @@ main.wrap {
   font-weight: 900;
   margin: 0 0 0.75rem;
 }
-.tool-page button {
-  margin-top: 2.75rem;
+.btn-m-t {
+  margin-top: 2rem;
 }
 .lede {
   color: var(--muted);
@@ -441,5 +441,55 @@ input[type="text"]:focus {
 @media (prefers-reduced-motion: reduce) {
   .btn.is-busy::before {
     animation-duration: 2s;
+  }
+}
+
+/* Loading overlay */
+.loading {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(20, 33, 61, 0.72);
+}
+.loading[hidden] {
+  display: none;
+}
+.loading-card {
+  width: min(100%, 24rem);
+  padding: 2rem 1.5rem;
+  text-align: center;
+  background: var(--surface);
+  border-radius: var(--radius);
+  border-top: 6px solid var(--marker);
+}
+.loading-card h2 {
+  margin: 1rem 0 0.25rem;
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
+}
+.loading-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+.spinner {
+  width: 3rem;
+  height: 3rem;
+  margin-inline: auto;
+  border-radius: 50%;
+  border: 5px solid var(--line);
+  border-top-color: var(--ink);
+  animation: spin 0.8s linear infinite;
+}
+body.is-loading {
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2.5s;
   }
 }

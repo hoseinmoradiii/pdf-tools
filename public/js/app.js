@@ -1,4 +1,34 @@
 (function () {
+  var overlay = document.querySelector('[data-loading]');
+
+  function showLoading(message) {
+    if (!overlay) return;
+    if (message) overlay.querySelector('[data-loading-title]').textContent = message;
+    overlay.hidden = false;
+    document.body.classList.add('is-loading');
+  }
+
+  function hideLoading() {
+    if (!overlay) return;
+    overlay.hidden = true;
+    document.body.classList.remove('is-loading');
+  }
+
+  // Coming back with the browser's Back button can restore the page with the overlay still up
+  window.addEventListener('pageshow', function (e) {
+    if (!e.persisted) return;
+    hideLoading();
+    document.querySelectorAll('[data-submit]').forEach(function (b) {
+      b.classList.remove('is-busy');
+      if (b.dataset.label) b.textContent = b.dataset.label;
+    });
+  });
+
+  // When the server responds with a result, the page reloads without the overlay
+  // and the download starts on its own. Remove this block if you prefer a manual click.
+  var auto = document.querySelector('[data-autodownload]');
+  if (auto) setTimeout(function () { auto.click(); }, 400);
+
   function formatSize(bytes) {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
@@ -106,9 +136,12 @@
     });
 
     form.addEventListener('submit', function () {
+      // Only fires when the browser's own validation (required file) has passed
       submit.disabled = true;
       submit.classList.add('is-busy');
+      submit.dataset.label = submit.textContent;
       submit.textContent = submit.dataset.busyText || 'Working…';
+      showLoading(form.dataset.loadingMessage);
     });
   });
 })();
