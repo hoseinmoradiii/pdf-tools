@@ -1,6 +1,8 @@
 (function () {
+  var TIMEOUT_MS = 10 * 60 * 1000; // give up after 10 minutes
   var overlay = document.querySelector('[data-loading]');
 
+  /* ---------- Loading overlay ---------- */
   function showLoading(message) {
     if (!overlay) return;
     if (message) overlay.querySelector('[data-loading-title]').textContent = message;
@@ -14,27 +16,81 @@
     document.body.classList.remove('is-loading');
   }
 
-  // Coming back with the browser's Back button can restore the page with the overlay still up
+  // Back/forward cache can restore the page with the overlay still showing
   window.addEventListener('pageshow', function (e) {
-    if (!e.persisted) return;
-    hideLoading();
-    document.querySelectorAll('[data-submit]').forEach(function (b) {
-      b.classList.remove('is-busy');
-      if (b.dataset.label) b.textContent = b.dataset.label;
-    });
+    if (e.persisted) hideLoading();
   });
 
-  // When the server responds with a result, the page reloads without the overlay
-  // and the download starts on its own. Remove this block if you prefer a manual click.
-  var auto = document.querySelector('[data-autodownload]');
-  if (auto) setTimeout(function () { auto.click(); }, 400);
-
+  /* ---------- Helpers ---------- */
   function formatSize(bytes) {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
     return (bytes / 1024 / 1024).toFixed(1) + ' MB';
   }
 
+  function filenameFromHeader(res, fallback) {
+    var cd = res.headers.get('content-disposition') || '';
+    var star = cd.match(/filename\*=(?:UTF-8'')?([^;]+)/i);
+    if (star) { try { return decodeURIComponent(star[1].trim().replace(/"/g, '')); } catch (e) {} }
+    var plain = cd.match(/filename="?([^";]+)"?/i);
+    return plain ? plain[1] : fallback;
+  }
+
+  function triggerDownload(url, filename) {
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename || '';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  // Read a useful message out of a failed response
+  async function errorMessage(res) {
+    var type = res.headers.get('content-type') || '';
+    try {
+      if (type.indexOf('application/json') !== -1) {
+        var data = await res.json();
+        if (data && data.error) return data.error.message || data.error;
+        if (data && data.message) return data.message;
+      }
+    } catch (e) { /* fall through */ }
+    return 'The server returned an error (' + res.status + ').';
+  }
+
+  /* ---------- Notice (success / error) shown above the form ---------- */
+  function showNotice(form, kind, text, link) {
+    var old = form.parentNode.querySelector('[data-notice]');
+    if (old) old.remove();
+
+    var box = document.createElement('div');
+    box.setAttribute('data-notice', '');
+    box.className = 'notice ' + (kind === 'ok' ? 'notice-ok' : 'notice-error');
+    box.setAttribute('role', kind === 'ok' ? 'status' : 'alert');
+
+    var body = document.createElement('div');
+    var strong = document.createElement('strong');
+    strong.textContent = kind === 'ok' ? 'Your file is ready.' : 'That didn’t work.';
+    var span = document.createElement('span');
+    span.textContent = text;
+    body.appendChild(strong);
+    body.appendChild(span);
+    box.appendChild(body);
+
+    if (link) {
+      var a = document.createElement('a');
+      a.className = 'btn';
+      a.href = link.url;
+      a.download = link.filename || '';
+      a.textContent = 'Download again';
+      box.appendChild(a);
+    }
+
+    form.parentNode.insertBefore(box, form);
+    box.scrollIntoView({ block: 'nearest' });
+  }
+
+  /* ---------- Upload forms ---------- */
   document.querySelectorAll('[data-upload-form]').forEach(function (form) {
     var zone = form.querySelector('[data-dropzone]');
     var input = zone.querySelector('input[type="file"]');
@@ -43,9 +99,10 @@
     var multiple = zone.dataset.multiple === 'true';
     var withPreviews = zone.dataset.images === 'true';
     var files = [];
+    var lastBlobUrl = null;
+    var originalLabel = submit.textContent;
 
     function sync() {
-      // Push our ordered array back into the real input so the browser submits it in this order
       var dt = new DataTransfer();
       files.forEach(function (f) { dt.items.add(f); });
       input.files = dt.files;
@@ -119,7 +176,6 @@
     }
 
     input.addEventListener('change', function () {
-      // Native picker replaces input.files; rebuild our array from it
       var picked = Array.from(input.files);
       files = multiple ? files.concat(picked) : picked.slice(0, 1);
       sync();
@@ -135,13 +191,65 @@
       if (e.dataTransfer && e.dataTransfer.files.length) setFiles(e.dataTransfer.files);
     });
 
-    form.addEventListener('submit', function () {
-      // Only fires when the browser's own validation (required file) has passed
-      submit.disabled = true;
-      submit.classList.add('is-busy');
-      submit.dataset.label = submit.textContent;
-      submit.textContent = submit.dataset.busyText || 'Working…';
-      showLoading(form.dataset.loadingMessage);
+    function setBusy(busy) {
+      submit.classList.toggle('is-busy', busy);
+      submit.disabled = busy || files.length === 0;
+      submit.textContent = busy ? (submit.dataset.busyText || 'Working…') : originalLabel;
+      if (busy) showLoading(form.dataset.loadingMessage); else hideLoading();
+    }
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      if (files.length === 0) return;
+
+      if (lastBlobUrl) { URL.revokeObjectURL(lastBlobUrl); lastBlobUrl = null; }
+      var old = form.parentNode.querySelector('[data-notice]');
+      if (old) old.remove();
+
+      var controller = new AbortController();
+      var timer = setTimeout(function () { controller.abort(); }, TIMEOUT_MS);
+      setBusy(true);
+
+      try {
+        var res = await fetch(form.action, {
+          method: 'POST',
+          body: new FormData(form),
+          headers: { 'Accept': 'application/json, application/octet-stream, */*' },
+          signal: controller.signal
+        });
+
+        if (!res.ok) throw new Error(await errorMessage(res));
+
+        var type = res.headers.get('content-type') || '';
+        var url, filename;
+
+        if (type.indexOf('application/json') !== -1) {
+          // Server answered with { downloadUrl, filename }
+          var data = await res.json();
+          url = data.downloadUrl || data.url;
+          filename = data.filename;
+          if (!url) throw new Error('The server did not return a download link.');
+        } else if (type.indexOf('text/html') !== -1) {
+          throw new Error('The server returned a web page instead of a file. Check that the POST route sends the file or JSON.');
+        } else {
+          // Server sent the file itself (res.download / res.sendFile)
+          var blob = await res.blob();
+          lastBlobUrl = URL.createObjectURL(blob);
+          url = lastBlobUrl;
+          filename = filenameFromHeader(res, 'download');
+        }
+
+        triggerDownload(url, filename);
+        showNotice(form, 'ok', filename || 'Your download has started.', { url: url, filename: filename });
+      } catch (err) {
+        var msg = err.name === 'AbortError'
+          ? 'The conversion took too long and was cancelled. Try a smaller file.'
+          : (err.message === 'Failed to fetch' ? 'Could not reach the server. Check your connection and try again.' : err.message);
+        showNotice(form, 'error', msg);
+      } finally {
+        clearTimeout(timer);
+        setBusy(false); // always runs: success, error, timeout or network failure
+      }
     });
   });
 })();

@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response, Router } from "express";
-import pdfToWordRouter from "./pdf-to-word.router";
-import imagesToPdfRouter from "./image-to-pdf.router";
-import removeWatermarkRouter from "./remove-watermark.router";
+import pdfToWordRouter from "./pdf-to-word.router.js";
+import imagesToPdfRouter from "./image-to-pdf.router.js";
+import removeWatermarkRouter from "./remove-watermark.router.js";
 
 const router = Router();
 

@@ -1,9 +1,10 @@
-import express, { Express, NextFunction, Request, Response } from "express";
-import { logger } from "./configs/winston.config";
+import express, { Express } from "express";
+import router from "./routes/index.js";
+import { logger } from "./configs/winston.config.js";
 import expressLayouts from "express-ejs-layouts";
-import router from "./routes";
 import dotenv from "dotenv";
 import path from "path";
+import { errorMiddleware } from "./middlewares/error.middleware.js";
 
 dotenv.config();
 
@@ -17,6 +18,7 @@ function bootstrap() {
   app.use(express.static(path.join(process.cwd(), "public")));
 
   app.use(router);
+  app.use(errorMiddleware);
 
   const PORT = process.env.PORT || 3002;
   app.listen(PORT, () => {
