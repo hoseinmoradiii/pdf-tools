@@ -20,6 +20,7 @@ export class PdfToWordController {
 
   async convert(req: Request, res: Response, next: NextFunction) {
     const inputPath = req.file?.path;
+    let outputPath: string | undefined;
 
     try {
       if (!req.file || !inputPath) {
@@ -29,7 +30,7 @@ export class PdfToWordController {
         });
       }
 
-      const outputPath = path.join(
+      outputPath = path.join(
         path.dirname(inputPath),
         `${req.file.filename}.docx`,
       );
@@ -41,12 +42,14 @@ export class PdfToWordController {
 
       await this.pdfToWordService.convert(inputPath, outputPath, lang);
 
-      res.download(outputPath, "converted.docx", async (err) => {
+      res.download(outputPath!, "converted.docx", async (err) => {
         if (err) logger.error(err);
-        await this.pdfToWordService.cleanUp(inputPath, outputPath);
+        await this.pdfToWordService.cleanUp(inputPath, outputPath!);
       });
     } catch (error) {
-      if (inputPath) await this.pdfToWordService.cleanUp(inputPath);
+      await this.pdfToWordService.cleanUp(
+        ...[inputPath, outputPath].filter((p): p is string => !!p),
+      );
       next(error);
     }
   }

@@ -21,6 +21,7 @@ export class RemoveWatermarkController {
 
   async remove(req: Request, res: Response, next: NextFunction) {
     const inputPath = req.file?.path;
+    let outputPath: string | undefined;
 
     try {
       if (!req.file || !inputPath) {
@@ -37,19 +38,21 @@ export class RemoveWatermarkController {
       const pages: RemoveWatermarkPages =
         req.body.pages === "first" ? "first" : "all";
 
-      const outputPath = path.join(
+      outputPath = path.join(
         path.dirname(inputPath),
         `${req.file.filename}-clean.pdf`,
       );
 
       await this.service.remove(inputPath, outputPath, watermarkText, pages);
 
-      res.download(outputPath, "no-watermark.pdf", async (err) => {
+      res.download(outputPath!, "no-watermark.pdf", async (err) => {
         if (err) logger.error(err);
-        await this.service.cleanUp(inputPath, outputPath);
+        await this.service.cleanUp(inputPath, outputPath!);
       });
     } catch (error) {
-      if (inputPath) await this.service.cleanUp(inputPath);
+      await this.service.cleanUp(
+        ...[inputPath, outputPath].filter((p): p is string => !!p),
+      );
       next(error);
     }
   }

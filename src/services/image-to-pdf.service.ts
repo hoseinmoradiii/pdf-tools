@@ -41,42 +41,65 @@ export class ImagesToPdfService {
 
       let settled = false;
 
-      const fail = (error: Error) => {
-        if (settled) return;
-
-        settled = true;
-        reject(error);
+      const toError = (message: string) => {
+        const error = new Error(message) as Error & {
+          status?: number;
+          clientMessage?: string;
+        };
+        // Undecodable/corrupt uploads are client errors, not server faults.
+        if (
+          /unsupported|invalid|corrupt|decode|failed to (read|load|open)/i.test(
+            message,
+          )
+        ) {
+          error.status = 422;
+          error.clientMessage = "One or more uploaded images could not be read.";
+        }
+        return error;
       };
+
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        void worker.terminate();
+        reject(toError("Image-to-PDF conversion timed out"));
+      }, 2 * 60 * 1000);
+
+      const finish = (fn: () => void) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        fn();
+      };
+
+      const fail = (error: Error) => finish(() => reject(error));
 
       // Receive generated PDF
       worker.on("message", (result: Uint8Array | WorkerResult) => {
-        if (settled) return;
+        finish(() => {
+          if (result instanceof Uint8Array) {
+            resolve(Buffer.from(result));
+            return;
+          }
 
-        if (result instanceof Uint8Array) {
-          settled = true;
-          resolve(Buffer.from(result));
-          return;
-        }
-
-        if (result.error) {
-          fail(new Error(result.error));
-        }
+          if (result.error) {
+            reject(toError(result.error));
+          }
+        });
       });
 
       // Handle worker errors
-      worker.on("error", (error: Error) => {
-        console.log(error);
-
-        fail(error);
-      });
+      worker.on("error", fail);
 
       // Handle worker termination
       worker.on("exit", (code) => {
-        if (code !== 0) {
-          fail(new Error(`PDF worker exited with code ${code}`));
-        } else if (!settled) {
-          fail(new Error("PDF worker exited without returning a result"));
-        }
+        finish(() =>
+          reject(
+            code !== 0
+              ? toError(`PDF worker exited with code ${code}`)
+              : toError("PDF worker exited without returning a result"),
+          ),
+        );
       });
     });
   }

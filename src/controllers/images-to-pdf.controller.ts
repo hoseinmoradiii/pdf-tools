@@ -31,9 +31,15 @@ export class ImagesToPdfController {
       const { pageSize, orientation, margin } = req.body;
 
       const config: PdfConfig = {
-        pageSize,
-        orientation,
-        margin: Number(margin) as Margin,
+        pageSize: ["A4", "Letter", "fit"].includes(pageSize)
+          ? pageSize
+          : "A4",
+        orientation: ["auto", "portrait", "landscape"].includes(orientation)
+          ? orientation
+          : "auto",
+        margin: [0, 20, 40].includes(Number(margin))
+          ? (Number(margin) as Margin)
+          : 20,
       };
 
       const pdf = await this.service.convertImagesToPdf(images, config);

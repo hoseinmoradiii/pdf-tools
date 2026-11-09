@@ -14,8 +14,13 @@ export const uploadImages = multer({
       "image/webp",
     ];
 
-    if (!allowedMimeTypes.includes(file.mimetype))
-      return cb(new Error("File Type Not Allowed"));
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      const error = new Error("Only JPEG, PNG, and WebP images are allowed") as Error & {
+        status?: number;
+      };
+      error.status = 400;
+      return cb(error);
+    }
 
     cb(null, true);
   },

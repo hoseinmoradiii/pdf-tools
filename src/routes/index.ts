@@ -8,6 +8,10 @@ const router = Router();
 router.get("/", (req: Request, res: Response, next: NextFunction) => {
   res.render("index", { title: "Home" });
 });
+
+router.get("/health", (_req: Request, res: Response) => {
+  res.status(200).json({ status: "ok" });
+});
 router.use(pdfToWordRouter);
 router.use(imagesToPdfRouter);
 router.use(removeWatermarkRouter);
