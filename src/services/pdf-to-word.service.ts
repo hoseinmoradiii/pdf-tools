@@ -1,5 +1,4 @@
 import fs from "fs/promises";
-import { PythonService } from "./python.service.js";
 import { spawn } from "child_process";
 import path from "path";
 
@@ -12,15 +11,41 @@ export class PdfToWordService {
     "main.py",
   );
 
-  private readonly timeout = 5 * 1000 * 60;
+  private readonly pythonBin = path.resolve(
+    process.cwd(),
+    "src",
+    "python-engine",
+    ".venv",
+    "bin",
+    "python3",
+  );
+
+  private readonly timeout = 10 * 60 * 1000;
 
   async convert(
     inputPath: string,
     outputPath: string,
     lang: string = "eng",
+    mode: string = "editable",
   ): Promise<string> {
     return new Promise((resolve, reject) => {
-      const proc = spawn("python3", [this.script, inputPath, outputPath, lang]);
+      const proc = spawn(
+        this.pythonBin,
+        [this.script, inputPath, outputPath, lang, mode],
+        {
+          cwd: path.dirname(this.script),
+          env: {
+            ...process.env,
+            VIRTUAL_ENV: path.resolve(
+              process.cwd(),
+              "src",
+              "python-engine",
+              ".venv",
+            ),
+            PATH: `${path.dirname(this.pythonBin)}:${process.env.PATH ?? ""}`,
+          },
+        },
+      );
 
       let stdout = "";
       let stderr = "";
@@ -40,7 +65,7 @@ export class PdfToWordService {
 
       proc.on("close", (code) => {
         clearTimeout(timer);
-        let parsed;
+        let parsed: { success?: boolean; error?: string } | null = null;
         try {
           parsed = JSON.parse(stdout.trim().split("\n").pop()!);
         } catch {

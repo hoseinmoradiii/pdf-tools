@@ -19,27 +19,34 @@ export class PdfToWordController {
   }
 
   async convert(req: Request, res: Response, next: NextFunction) {
-    try {
-      if (!req.file)
-        return res.status(400).render("pages/pdf-to-word", {
-          active: "word",
-          error: "Please upload a PDF file.",
-        });
+    const inputPath = req.file?.path;
 
-      const inputPath = req.file.path;
+    try {
+      if (!req.file || !inputPath) {
+        return res.status(400).json({
+          success: false,
+          message: "Please upload a PDF file.",
+        });
+      }
+
       const outputPath = path.join(
         path.dirname(inputPath),
         `${req.file.filename}.docx`,
       );
 
-      const lang = req.body.lang || "eng";
+      const lang =
+        typeof req.body.lang === "string" && req.body.lang.trim()
+          ? req.body.lang.trim()
+          : "eng";
+
       await this.pdfToWordService.convert(inputPath, outputPath, lang);
+
       res.download(outputPath, "converted.docx", async (err) => {
         if (err) logger.error(err);
-        await this.pdfToWordService.cleanUp(req.file!.path, outputPath);
+        await this.pdfToWordService.cleanUp(inputPath, outputPath);
       });
     } catch (error) {
-      await this.pdfToWordService.cleanUp(req.file!.path);
+      if (inputPath) await this.pdfToWordService.cleanUp(inputPath);
       next(error);
     }
   }

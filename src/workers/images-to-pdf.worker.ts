@@ -31,8 +31,6 @@ async function generatePdf(
 
       pdf.on("error", reject);
 
-      const margin = Number(config.margin) || 0;
-
       for (const image of images) {
         const dimensions = imageSize(image);
 
@@ -58,24 +56,27 @@ async function generatePdf(
             : Math.max(imageWidth, imageHeight);
 
           pdf.addPage({
-            size: [pageWidth + margin * 2, pageHeight + margin * 2],
-            margin,
+            size: [
+              pageWidth + config.margin * 2,
+              pageHeight + config.margin * 2,
+            ],
+            margin: config.margin,
           });
         } else {
           pdf.addPage({
             size: config.pageSize,
             layout: orientation,
-            margin,
+            margin: config.margin,
           });
         }
 
         const pageWidth = pdf.page.width;
         const pageHeight = pdf.page.height;
 
-        const availableWidth = pageWidth - margin * 2;
-        const availableHeight = pageHeight - margin * 2;
+        const availableWidth = pageWidth - config.margin * 2;
 
-        pdf.image(Buffer.from(image), margin, margin, {
+        const availableHeight = pageHeight - config.margin * 2;
+        pdf.image(Buffer.from(image), config.margin, config.margin, {
           fit: [availableWidth, availableHeight],
           align: "center",
           valign: "center",
